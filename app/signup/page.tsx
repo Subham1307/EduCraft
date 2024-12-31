@@ -15,20 +15,36 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false) // Added to handle loading state
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault() // Prevent form from refreshing the page
+    setLoading(true)
     setError('')
 
-    // Here you would typically make an API call to register the user
-    // For this example, we'll just simulate a successful registration
-    if (name && email && password) {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      router.push('/dashboard') // Redirect to dashboard after successful registration
-    } else {
-      setError('Please fill in all fields.')
+    try {
+      const response = await fetch("/api/v1/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      if (!response.ok) {
+        const { error } = await response.json()
+        throw new Error(error || "An error occurred during sign-up.")
+      }
+
+      const data = await response.json()
+      console.log("Sign-up successful:", data)
+      router.push('/courses') // Redirect to the courses page
+    } catch (err) {
+      console.error("Error during sign-up:", err)
+      setError(err.message || "An unexpected error occurred.")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -45,7 +61,7 @@ export default function SignUpPage() {
             Create your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <Label htmlFor="name" className="sr-only">
@@ -57,7 +73,6 @@ export default function SignUpPage() {
                 type="text"
                 autoComplete="name"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                 placeholder="Full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -73,7 +88,6 @@ export default function SignUpPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -89,7 +103,6 @@ export default function SignUpPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -106,8 +119,8 @@ export default function SignUpPage() {
           )}
 
           <div>
-            <Button type="submit" className="w-full">
-              Sign up
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing up..." : "Sign up"}
             </Button>
           </div>
         </form>
@@ -123,4 +136,3 @@ export default function SignUpPage() {
     </div>
   )
 }
-

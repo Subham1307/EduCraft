@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       {
         message: "User created successfully",
         token, // Send the token back to the frontend
-        redirectUrl: "/dashboard" // You can modify this to any page you want
+        redirectUrl: "/courses" // You can modify this to any page you want
       },
       { status: 201 }
     );

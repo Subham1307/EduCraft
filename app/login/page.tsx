@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -16,18 +17,19 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
-    setError('')
 
-    // Here you would typically make an API call to authenticate the user
-    // For this example, we'll just simulate a successful login
-    if (email && password) {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      router.push('/dashboard') // Redirect to dashboard after successful login
+    const result = await signIn('credentials', {
+      redirect: false,
+      email,
+      password,
+    })
+
+    if (result?.error) {
+      setError(result.error)
     } else {
-      setError('Please enter both email and password.')
+      router.push('/courses') // Redirect to a secure page
     }
   }
 
@@ -44,7 +46,7 @@ export default function LoginPage() {
             Sign in to your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <Label htmlFor="email-address" className="sr-only">

@@ -4,16 +4,8 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { useEffect, useState } from 'react'
 
-// Sample course data (replace with actual data from your backend)
-const courses = [
-  { id: 1, title: 'Introduction to Web Development', price: 49.99, image: '/placeholder.svg?height=200&width=300' },
-  { id: 2, title: 'Advanced JavaScript Techniques', price: 79.99, image: '/placeholder.svg?height=200&width=300' },
-  { id: 3, title: 'React.js Masterclass', price: 99.99, image: '/placeholder.svg?height=200&width=300' },
-  { id: 4, title: 'Node.js and Express.js Fundamentals', price: 69.99, image: '/placeholder.svg?height=200&width=300' },
-  { id: 5, title: 'Python for Data Science', price: 89.99, image: '/placeholder.svg?height=200&width=300' },
-  { id: 6, title: 'Machine Learning Basics', price: 129.99, image: '/placeholder.svg?height=200&width=300' },
-]
 
 const fadeInUp = {
   initial: { opacity: 0, y: 60 },
@@ -21,7 +13,38 @@ const fadeInUp = {
   transition: { duration: 0.6 }
 }
 
+// Define Course type
+type Course = {
+    id: number;
+    title: string;
+    description: string;
+    price: number;
+  };
+
 export default function CoursesPage() {
+    const [courses, setCourses] = useState<Course[]>([]); // Use Course type for state
+
+  // Fetch courses function
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('/api/v1/courses');
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses');
+      }
+
+      const data: Course[] = await response.json(); // Type the fetched data
+      setCourses(data); // Update the state with fetched courses
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+
+  // Use useEffect to fetch courses on component mount
+  useEffect(() => {
+    fetchCourses();
+  }, []); // Empty dependency array ensures it runs only once
+
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <motion.h1 
@@ -43,7 +66,7 @@ export default function CoursesPage() {
             transition={{ delay: index * 0.1 }}
           >
             <Image
-              src={course.image}
+              src={'course.thumbnail'}
               alt={course.title}
               width={300}
               height={200}
