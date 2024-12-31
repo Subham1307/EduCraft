@@ -1,5 +1,7 @@
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prismaClient } from './db';
+import bcrypt from "bcryptjs";
+
 
 export const NEXT_AUTH_CONFIG = {
     providers: [
@@ -20,27 +22,34 @@ export const NEXT_AUTH_CONFIG = {
                     where: { email: credentials.email },
                 });
 
-                if (!user || !(credentials.password != user.password)) {
-                    return null; // Return null for invalid credentials
-                }
-
+                if (!user || !(await bcrypt.compare(credentials.password, user.password))) {
+                    throw new Error("Invalid email or password");
+                  }
                 return { id: user.id, name: user.name, email: user.email };
             },
         }),
     ],
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
-        jwt: async ({ user, token }: any) => {
-            if (user) {
-                token.uid = user.id;
-            }
-            return token;
+        async jwt({ token, user }) {
+          if (user) {
+            token.id = user.id;
+            token.email = user.email;
+            token.name = user.name;
+    
+            // You can add more custom data to the token if needed
+          }
+          return token;
         },
-        session: ({ session, token }: any) => {
-            if (session.user) {
-                session.user.id = token.uid
-            }
-            return session
-        }
+        async session({ session, token }) {
+          if (token) {
+            session.user = {
+              id: token.id,
+              email: token.email,
+              name: token.name,
+            };
+          }
+          return session;
+        },
     },
 }
