@@ -42,6 +42,7 @@ export const NEXT_AUTH_CONFIG = {
           return token;
         },
         async session({ session, token }) {
+          console.log("token is ",token)
           if (token) {
             session.user = {
               id: token.id,
@@ -49,6 +50,7 @@ export const NEXT_AUTH_CONFIG = {
               name: token.name,
             };
           }
+          console.log("session is ",session)
           return session;
         },
     },

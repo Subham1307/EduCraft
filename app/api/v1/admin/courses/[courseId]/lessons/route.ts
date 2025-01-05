@@ -1,4 +1,4 @@
-/api/v1/admin/courses/[courseId]/lessons
+// /api/v1/admin/courses/[courseId]/lessons
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prismaClient } from '@/app/lib/db';

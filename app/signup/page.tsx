@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 
+
 export default function SignUpPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -39,7 +40,7 @@ export default function SignUpPage() {
 
       const data = await response.json()
       console.log("Sign-up successful:", data)
-      router.push('/courses') // Redirect to the courses page
+      router.push(data.redirectUrl) // Redirect to the courses page
     } catch (err) {
       console.error("Error during sign-up:", err)
       setError(err.message || "An unexpected error occurred.")

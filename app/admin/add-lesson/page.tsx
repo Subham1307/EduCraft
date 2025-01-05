@@ -1,64 +1,115 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertCircle, Upload } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, Upload, Loader } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getSignedURL } from '@/app/create/actions';
 
-// Mock data for existing courses
+const MAX_VIDEO_SIZE_MB = 100;
+
 const courses = [
   { id: '1', title: 'Introduction to Web Development' },
   { id: '2', title: 'Advanced JavaScript Techniques' },
   { id: '3', title: 'React.js Masterclass' },
-]
+];
+
+// Helper function to calculate file checksum
+const calculateChecksum = async (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const buffer = reader.result as ArrayBuffer;
+      const hashBuffer = crypto.subtle.digest('SHA-256', buffer);
+      hashBuffer.then((hash) => {
+        const hashArray = Array.from(new Uint8Array(hash));
+        const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+        resolve(hashHex);
+      });
+    };
+    reader.onerror = () => reject('Failed to calculate checksum.');
+    reader.readAsArrayBuffer(file);
+  });
+};
 
 export default function AddLessonPage() {
-  const [courseId, setCourseId] = useState('')
-  const [lessonTitle, setLessonTitle] = useState('')
-  const [videoFile, setVideoFile] = useState<File | null>(null)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const router = useRouter()
+  const [courseId, setCourseId] = useState('');
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [videoFile, setVideoFile] = useState<File | undefined>();
+  const [notification, setNotification] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setVideoFile(e.target.files[0])
+    const file = e.target.files?.[0];
+    if (!file) {
+      setVideoFile(undefined);
+      return;
     }
-  }
+
+    if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+      setNotification({ type: 'error', message: `File size must not exceed ${MAX_VIDEO_SIZE_MB}MB.` });
+      return;
+    }
+
+    if (!file.type.startsWith('video/')) {
+      setNotification({ type: 'error', message: 'Please upload a valid video file.' });
+      return;
+    }
+
+    setVideoFile(file);
+    setNotification(null); // Clear any previous error
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccess(false)
+    e.preventDefault();
+    setNotification(null); // Clear previous notifications
 
     if (!courseId || !lessonTitle || !videoFile) {
-      setError('Please fill in all fields and upload a video file.')
-      return
+      setNotification({ type: 'error', message: 'Please fill in all fields and upload a video file.' });
+      return;
     }
 
-    // Here you would typically make an API call to add the lesson to the course
-    // For this example, we'll just simulate a successful addition
+    setLoading(true);
+
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // In a real implementation, you would upload the file to your server or a cloud storage service
-      console.log('Lesson added:', { courseId, lessonTitle, videoFileName: videoFile.name })
-      setSuccess(true)
-      setLessonTitle('')
-      setVideoFile(null)
-      
-      // Redirect to course list after a short delay
-      setTimeout(() => router.push('/admin/courses'), 2000)
-    } catch (err) {
-      setError('Failed to add lesson. Please try again.')
+      // Calculate checksum
+      const checksum = await calculateChecksum(videoFile);
+
+      // Get signed URL
+      const signedUrlResult = await getSignedURL(videoFile.name, videoFile.type, checksum);
+      if (!signedUrlResult?.success?.url) {
+        throw new Error('Failed to get a signed URL. Please try again.');
+      }
+
+      const url = signedUrlResult.success.url;
+
+      // Upload file to S3
+      await fetch(url, {
+        method: 'PUT',
+        body: videoFile,
+        headers: {
+          'Content-Type': videoFile.type,
+        },
+      });
+
+      setNotification({ type: 'success', message: 'Lesson added successfully!' });
+      setLessonTitle('');
+      setVideoFile(undefined);
+
+      // Optionally redirect after success
+      // setTimeout(() => router.push('/admin/courses'), 2000);
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Failed to add lesson. Please try again.' });
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -72,7 +123,7 @@ export default function AddLessonPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <Label htmlFor="course">Select Course</Label>
-            <Select onValueChange={(value) => setCourseId(value)}>
+            <Select onValueChange={(value) => setCourseId(value)} required>
               <SelectTrigger id="course">
                 <SelectValue placeholder="Select a course" />
               </SelectTrigger>
@@ -113,31 +164,31 @@ export default function AddLessonPage() {
                 <Upload className="h-4 w-4 inline-block mr-2" />
                 Choose video file
               </Label>
-              <span className="ml-3 text-sm text-gray-500">
-                {videoFile ? videoFile.name : 'No file chosen'}
-              </span>
+              <span className="ml-3 text-sm text-gray-500">{videoFile ? videoFile.name : 'No file chosen'}</span>
             </div>
           </div>
-          {error && (
-            <Alert variant="destructive">
+          {notification && (
+            <Alert
+              variant={notification.type === 'error' ? 'destructive' : 'default'}
+              className={notification.type === 'success' ? 'bg-green-100 border-green-500 text-green-800' : ''}
+            >
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertTitle>{notification.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+              <AlertDescription>{notification.message}</AlertDescription>
             </Alert>
           )}
-          {success && (
-            <Alert variant="default" className="bg-green-100 border-green-500 text-green-800">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Success</AlertTitle>
-              <AlertDescription>Lesson added successfully!</AlertDescription>
-            </Alert>
-          )}
-          <Button type="submit" className="w-full">
-            Add Lesson
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Adding Lesson...
+              </>
+            ) : (
+              'Add Lesson'
+            )}
           </Button>
         </form>
       </motion.div>
     </div>
-  )
+  );
 }
-
