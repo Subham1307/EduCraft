@@ -12,37 +12,52 @@ import { AlertCircle } from 'lucide-react'
 export default function CreateCoursePage() {
   const [title, setTitle] = useState('')
   const [price, setPrice] = useState('')
+  const [description, setDescription] = useState('') // Added description state
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccess(false)
+    e.preventDefault();
+    setError('');
+    setSuccess(false);
 
-    if (!title || !price) {
-      setError('Please fill in all fields.')
-      return
+    if (!title || !price || !description) { // Ensure description is included
+      setError('Please fill in all fields.');
+      return;
     }
 
-    // Here you would typically make an API call to create the course
-    // For this example, we'll just simulate a successful creation
+    // Prepare the course data to send to the API
+    const courseData = { title, description, price };
+
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      console.log('Course created:', { title, price })
-      setSuccess(true)
-      setTitle('')
-      setPrice('')
-      
-      // Redirect to course list after a short delay
-      setTimeout(() => router.push('/admin/courses'), 2000)
+      // Call the API to create the course
+      const response = await fetch('/api/v1/admin/courses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(courseData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Course created successfully
+        setSuccess(true);
+        setTitle('');
+        setPrice('');
+        setDescription('');
+
+        // Redirect to course list after a short delay
+      } else {
+        // Handle error from the API
+        setError(data.error || 'Failed to create course. Please try again.');
+      }
     } catch (err) {
-      setError('Failed to create course. Please try again.')
+      setError('Failed to create course. Please try again.');
     }
-  }
+  };
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -76,6 +91,16 @@ export default function CreateCoursePage() {
               required
             />
           </div>
+          <div>
+            <Label htmlFor="description">Course Description</Label>
+            <Input
+              id="description"
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+            />
+          </div>
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -98,4 +123,3 @@ export default function CreateCoursePage() {
     </div>
   )
 }
-

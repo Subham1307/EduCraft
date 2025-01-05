@@ -7,13 +7,20 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { title, description, price } = body;
+    console.log(title)
+    console.log(description)
+    console.log(price)
 
     if (!title || !description || !price) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
     await prismaClient.course.create({
-      data: { title, description, price },
+      data: { 
+        title,
+        description,
+        price: parseFloat(price),
+      },
     });
 
     return NextResponse.json({ message: 'Course added successfully' });

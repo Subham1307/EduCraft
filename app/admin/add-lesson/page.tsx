@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,13 +12,23 @@ import { getSignedURL } from '@/app/create/actions';
 
 const MAX_VIDEO_SIZE_MB = 100;
 
-const courses = [
-  { id: '1', title: 'Introduction to Web Development' },
-  { id: '2', title: 'Advanced JavaScript Techniques' },
-  { id: '3', title: 'React.js Masterclass' },
-];
+// TypeScript type for the course object
+type Course = {
+  id: string;
+  title: string;
+};
 
-// Helper function to calculate file checksum
+const fetchCourses = async (): Promise<Course[]> => {
+  try {
+    const response = await fetch('/api/v1/courses');
+    if (!response.ok) throw new Error('Failed to fetch courses');
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    return [];
+  }
+};
+
 const calculateChecksum = async (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -28,22 +37,30 @@ const calculateChecksum = async (file: File): Promise<string> => {
       const hashBuffer = crypto.subtle.digest('SHA-256', buffer);
       hashBuffer.then((hash) => {
         const hashArray = Array.from(new Uint8Array(hash));
-        const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+        const hashHex = hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('');
         resolve(hashHex);
       });
     };
-    reader.onerror = () => reject('Failed to calculate checksum.');
+    reader.onerror = () => reject(reader.error);
     reader.readAsArrayBuffer(file);
   });
 };
 
 export default function AddLessonPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
   const [courseId, setCourseId] = useState('');
   const [lessonTitle, setLessonTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | undefined>();
   const [notification, setNotification] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      const fetchedCourses = await fetchCourses();
+      setCourses(fetchedCourses);
+    };
+    loadCourses();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,7 +99,7 @@ export default function AddLessonPage() {
       const checksum = await calculateChecksum(videoFile);
 
       // Get signed URL
-      const signedUrlResult = await getSignedURL(videoFile.name, videoFile.type, checksum);
+      const signedUrlResult = await getSignedURL(videoFile.type, checksum, courseId, lessonTitle);
       if (!signedUrlResult?.success?.url) {
         throw new Error('Failed to get a signed URL. Please try again.');
       }
@@ -103,7 +120,6 @@ export default function AddLessonPage() {
       setVideoFile(undefined);
 
       // Optionally redirect after success
-      // setTimeout(() => router.push('/admin/courses'), 2000);
     } catch (error: any) {
       setNotification({ type: 'error', message: error.message || 'Failed to add lesson. Please try again.' });
     } finally {
