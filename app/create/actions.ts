@@ -12,8 +12,8 @@ const s3 = new S3Client({
   },
 });
 
-export async function getSignedURL(contentType: string, checksum: string, courseId:string, lessonTitle:string) {
-  const key = `videos/${courseId}/${lessonTitle}.mp4`;
+export async function getSignedURL(courseTitle:string, contentType: string, checksum: string, courseId:string, lessonTitle:string) {
+  const key = `videos/${courseTitle}/${lessonTitle}.mp4`;
   try {
     if (!process.env.AWS_BUCKET_NAME) {
       throw new Error("AWS_BUCKET_NAME is not defined in the environment variables.");
@@ -38,17 +38,17 @@ export async function getSignedURL(contentType: string, checksum: string, course
 
     console.log("signed url is ",signedUrl)
 
-    // await prismaClient.lesson.create({
-    //   data: {
-    //     title: lessonTitle,
-    //     videoUrl: signedUrl,  // Store the presigned URL in the database
-    //     course: {
-    //       connect: {
-    //         id: courseId,
-    //       },
-    //     },
-    //   },
-    // });
+    await prismaClient.lesson.create({
+      data: {
+        title: lessonTitle,
+        videoUrl: signedUrl,  // Store the presigned URL in the database
+        course: {
+          connect: {
+            id: courseId,
+          },
+        },
+      },
+    });
 
     return { success: { url: signedUrl } };
   } catch (error) {

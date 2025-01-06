@@ -33,6 +33,7 @@ export default function CoursesPage() {
       }
 
       const data: Course[] = await response.json(); // Type the fetched data
+      console.log("fetched courses are ",data)
       setCourses(data); // Update the state with fetched courses
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -66,7 +67,7 @@ export default function CoursesPage() {
             transition={{ delay: index * 0.1 }}
           >
             <Image
-              src={'course.thumbnail'}
+              src='https://picsum.photos/200/300'
               alt={course.title}
               width={300}
               height={200}
@@ -76,7 +77,7 @@ export default function CoursesPage() {
               <h2 className="text-xl font-semibold mb-2">{course.title}</h2>
               <p className="text-2xl font-bold text-primary mb-4">${course.price.toFixed(2)}</p>
               <Button asChild className="w-full">
-                <Link href={`/courses/${course.id}`}>View Course</Link>
+                <Link href={`/courses/${course.title}`}>View Course</Link>
               </Button>
             </div>
           </motion.div>

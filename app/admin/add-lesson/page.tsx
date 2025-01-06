@@ -48,6 +48,7 @@ const calculateChecksum = async (file: File): Promise<string> => {
 
 export default function AddLessonPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [courseTitle, setCourseTitle] = useState('');
   const [courseId, setCourseId] = useState('');
   const [lessonTitle, setLessonTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | undefined>();
@@ -87,7 +88,7 @@ export default function AddLessonPage() {
     e.preventDefault();
     setNotification(null); // Clear previous notifications
 
-    if (!courseId || !lessonTitle || !videoFile) {
+    if (!courseTitle || !lessonTitle || !videoFile) {
       setNotification({ type: 'error', message: 'Please fill in all fields and upload a video file.' });
       return;
     }
@@ -99,7 +100,7 @@ export default function AddLessonPage() {
       const checksum = await calculateChecksum(videoFile);
 
       // Get signed URL
-      const signedUrlResult = await getSignedURL(videoFile.type, checksum, courseId, lessonTitle);
+      const signedUrlResult = await getSignedURL(courseTitle, videoFile.type, checksum,courseId, lessonTitle);
       if (!signedUrlResult?.success?.url) {
         throw new Error('Failed to get a signed URL. Please try again.');
       }
@@ -139,18 +140,26 @@ export default function AddLessonPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <Label htmlFor="course">Select Course</Label>
-            <Select onValueChange={(value) => setCourseId(value)} required>
+            <Select
+              onValueChange={(value) => {
+                const [id, title] = value.split('|'); // Split the value into id and title
+                setCourseId(id);
+                setCourseTitle(title);
+              }}
+              required
+            >
               <SelectTrigger id="course">
                 <SelectValue placeholder="Select a course" />
               </SelectTrigger>
               <SelectContent>
                 {courses.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
+                  <SelectItem key={course.id} value={`${course.id}|${course.title}`}>
                     {course.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
           </div>
           <div>
             <Label htmlFor="lessonTitle">Lesson Title</Label>
