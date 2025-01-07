@@ -5,6 +5,27 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+
+interface Lesson {
+  id: string;
+  title: string;
+  videoUrl?: string;
+  notesUrl?: string;
+  duration?: string;
+}
+
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  price: number;
+  purchased: boolean;
+  lessons: Lesson[];
+}
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -18,9 +39,9 @@ export default function CoursePage() {
     ? Array.isArray(params.title)
       ? encodeURIComponent(params.title[0])
       : encodeURIComponent(params.title)
-    : null; // Use `null` instead of `undefined` for consistency
+    : null;
 
-  const [course, setCourse] = useState<any>(null); // Replace `any` with the actual course type if available
+  const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +54,12 @@ export default function CoursePage() {
       }
 
       try {
-        const response = await fetch(`/api/v1/courses/${courseTitle}`);
+        const token = localStorage.getItem('token'); // Assuming token is stored in localStorage
+        const response = await fetch(`/api/v1/courses/${courseTitle}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch course details');
@@ -55,7 +81,15 @@ export default function CoursePage() {
   }
 
   if (error) {
-    return <div className="min-h-screen flex items-center justify-center">{error}</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   if (!course) {
@@ -80,23 +114,29 @@ export default function CoursePage() {
           animate="animate"
         >
           <h2 className="text-2xl font-semibold mb-4">Course Lessons</h2>
-          <ul className="space-y-4">
-            {course.lessons.map((lesson: any, index: number) => (
-              <motion.li
-                key={lesson.id}
-                className="bg-card text-card-foreground p-4 rounded-lg shadow"
-                variants={fadeIn}
-                initial="initial"
-                animate="animate"
-                transition={{ delay: index * 0.1 }}
-              >
-                <h3 className="font-semibold">{lesson.title}</h3>
-                {lesson.duration && (
-                  <p className="text-sm text-muted-foreground">{lesson.duration}</p>
+          <Accordion type="single" collapsible className="w-full">
+            {course.lessons.map((lesson, index) => (
+              <AccordionItem key={lesson.id} value={lesson.id}>
+                <AccordionTrigger>{lesson.title}</AccordionTrigger>
+                {course.purchased && lesson.videoUrl && (
+                  <AccordionContent>
+                    <video controls className="w-full">
+                      <source src={lesson.videoUrl} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                    {lesson.notesUrl && (
+                      <a href={lesson.notesUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-primary hover:underline">
+                        Download Notes
+                      </a>
+                    )}
+                  </AccordionContent>
                 )}
-              </motion.li>
+                {lesson.duration && (
+                  <p className="text-sm text-muted-foreground mt-1">{lesson.duration}</p>
+                )}
+              </AccordionItem>
             ))}
-          </ul>
+          </Accordion>
         </motion.div>
         <motion.div
           className="order-1 md:order-2"
@@ -113,12 +153,17 @@ export default function CoursePage() {
               className="w-full h-64 object-cover"
             />
             <div className="p-6">
-              {course.price && (
-                <p className="text-3xl font-bold text-primary mb-4">
-                  ${course.price.toFixed(2)}
-                </p>
+              <p className="text-lg mb-4">{course.description}</p>
+              {!course.purchased && (
+                <>
+                  {course.price && (
+                    <p className="text-3xl font-bold text-primary mb-4">
+                      ${course.price.toFixed(2)}
+                    </p>
+                  )}
+                  <Button className="w-full">Enroll Now</Button>
+                </>
               )}
-              <Button className="w-full">Enroll Now</Button>
             </div>
           </div>
         </motion.div>
@@ -126,3 +171,4 @@ export default function CoursePage() {
     </div>
   );
 }
+

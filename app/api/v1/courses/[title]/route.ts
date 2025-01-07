@@ -4,11 +4,11 @@ import { prismaClient } from '@/app/lib/db';
 export async function GET(req: NextRequest, { params }: { params: { title: string } }) {
   const encodedTitle = params.title;
   const courseTitle = decodeURIComponent(encodedTitle); // Decode the title from the URL
-  // const authHeader = req.headers.get('Authorization');
+  const authHeader = req.headers.get('Authorization');
 
-  // if (!authHeader) {
-  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  // }
+  if (!authHeader) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     // Decode the token to extract the user ID
@@ -18,11 +18,9 @@ export async function GET(req: NextRequest, { params }: { params: { title: strin
 
     // Fetch the course using the title
     const course = await prismaClient.course.findFirst({
-      where: { title: courseTitle }, // Finds the first matching course by title
+      where: { title: courseTitle },
       include: { lessons: true },
     });
-    
-    
 
     if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
@@ -30,24 +28,28 @@ export async function GET(req: NextRequest, { params }: { params: { title: strin
 
     // Check if the user has purchased the course
     // const purchase = await prismaClient.purchase.findFirst({
-    //   where: { userId, courseId: course.id },
+    //   where: {
+    //     userId: userId,
+    //     courseId: course.id,
+    //     paymentStatus: 'COMPLETED',
+    //   },
     // });
-    const purchase=true;
+    const purchase = false;
 
     const courseResponse = {
       id: course.id,
-      title: course.title, // Include course title
+      title: course.title,
       description: course.description,
       purchased: !!purchase,
       lessons: purchase
-        ? course.lessons.map(lesson => ({
+        ? course.lessons.map((lesson) => ({
             id: lesson.id,
             title: lesson.title,
             videoUrl: lesson.videoUrl,
             notesUrl: lesson.notesUrl,
             createdAt: lesson.createdAt,
           }))
-        : course.lessons.map(lesson => ({
+        : course.lessons.map((lesson) => ({
             id: lesson.id,
             title: lesson.title, // Only return titles if not purchased
           })),
@@ -55,6 +57,9 @@ export async function GET(req: NextRequest, { params }: { params: { title: strin
 
     return NextResponse.json(courseResponse);
   } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to fetch course details', details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch course details', details: error.message },
+      { status: 500 }
+    );
   }
 }
